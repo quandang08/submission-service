@@ -20,7 +20,7 @@ public interface TaskClient {
             @RequestHeader("Authorization") String jwt
     ) throws Exception;
 
-    @PutMapping("/{id}/status")
+    @PutMapping("/api/tasks/{id}/status")
     public ResponseEntity<?> updateTaskStatus(
             @PathVariable Long id,
             @RequestParam String status,
