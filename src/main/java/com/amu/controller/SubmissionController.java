@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -64,7 +65,7 @@ public class SubmissionController {
     ) throws Exception {
         UserDto user = getUserOrThrow(jwt);
         // Optional: check quyền
-        // if (!user.getRole().equals("ADMIN")) throw new Exception("Access Denied");
+         if (!user.getRole().equals("ROLE_ADMIN")) throw new Exception("Access Denied");
         List<Submission> submissions = submissionService.getAllSubmissions();
         return new ResponseEntity<>(submissions, HttpStatus.OK);
     }
@@ -86,8 +87,12 @@ public class SubmissionController {
             @RequestHeader("Authorization") String jwt
     ) throws Exception {
         getUserOrThrow(jwt);
+        UserDto user = getUserOrThrow(jwt);
+        if (!user.getRole().equals("ROLE_ADMIN"))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admin can grade submissions!");
+
         SubmissionStatus submissionStatus = SubmissionStatus.valueOf(status.toUpperCase());
-        Submission updated = submissionService.acceptOrDeclineSubmission(id, submissionStatus);
+        Submission updated = submissionService.acceptOrDeclineSubmission(id, submissionStatus, jwt);
         return new ResponseEntity<>(updated, HttpStatus.OK);
     }
 }

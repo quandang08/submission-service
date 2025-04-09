@@ -3,12 +3,9 @@ package com.amu.service.clients;
 import com.amu.dto.TaskDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.*;
 
-@FeignClient(name = "TASK-SERVICE", url = "http://localhost/5002")
+@FeignClient(name = "TASK-SERVICE", url = "http://localhost:5002")
 public interface TaskClient {
 
     @GetMapping("/api/tasks/{id}")
@@ -17,8 +14,16 @@ public interface TaskClient {
             @PathVariable Long id
     ) throws Exception ;
 
-    @PatchMapping("/api/tasks/{id}/complete")
+    @PutMapping("/api/tasks/{id}/complete")
     public TaskDto completeTask(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String jwt
     ) throws Exception;
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateTaskStatus(
+            @PathVariable Long id,
+            @RequestParam String status,
+            @RequestHeader("Authorization") String jwt
+    );
 }

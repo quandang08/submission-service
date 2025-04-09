@@ -51,6 +51,6 @@ public interface SubmissionService {
      * @return Submission sau khi được cập nhật trạng thái.
      * @throws Exception nếu submission không tồn tại hoặc trạng thái không hợp lệ.
      */
-    Submission acceptOrDeclineSubmission(Long id, SubmissionStatus status) throws Exception;
+    Submission acceptOrDeclineSubmission(Long id, SubmissionStatus status, String jwt) throws Exception;
 
 }
