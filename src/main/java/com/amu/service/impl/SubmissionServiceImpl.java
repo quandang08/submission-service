@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class SubmissionServiceImpl implements SubmissionService {
@@ -32,6 +33,16 @@ public class SubmissionServiceImpl implements SubmissionService {
         TaskDto task = taskService.getTaskById(jwt, taskId);
         if (task == null) {
             throw new Exception("Task not found with id " + taskId);
+        }
+
+        //Kiểm tra người dùng có quyền submit hay không
+        if (task.getAssignedUserId() != null && !task.getAssignedUserId().equals(userId)) {
+            throw new IllegalAccessException("Bạn không được phép nộp bài cho task này.");
+        }
+
+        //Chặn submit nếu task chưa ở trạng thái DONE
+        if (!TaskStatus.DONE.equals(task.getStatus())) {
+            throw new IllegalStateException("Bạn chỉ có thể nộp bài khi task đã hoàn thành (DONE).");
         }
 
         Submission submission = new Submission();
@@ -62,15 +73,36 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     public Submission acceptOrDeclineSubmission(Long id, SubmissionStatus status, String jwt) throws Exception {
         Submission submission = getTaskSubmissionById(id);
-        submission.setStatus(status);
         TaskDto task = taskService.getTaskById(jwt, submission.getTaskId());
 
         if (SubmissionStatus.ACCEPTED.equals(status)) {
+            submission.setStatus(SubmissionStatus.ACCEPTED);
+
             if (!task.getStatus().equals(TaskStatus.DONE)) {
                 taskService.updateTaskStatus(task.getId(), TaskStatus.DONE.name(), jwt);
             }
+
+            List<Submission> otherSubs = submissionRepository.findByTaskId(submission.getTaskId())
+                    .stream()
+                    .filter(s -> !s.getId().equals(submission.getId()) && s.getStatus() == SubmissionStatus.PENDING)
+                    .collect(Collectors.toList());
+
+            for (Submission other : otherSubs) {
+                other.setStatus(SubmissionStatus.REJECTED);
+            }
+
+            submissionRepository.saveAll(otherSubs);
+
         } else if (SubmissionStatus.REJECTED.equals(status)) {
-            taskService.updateTaskStatus(task.getId(), TaskStatus.ASSIGNED.name(), jwt);
+            submission.setStatus(SubmissionStatus.REJECTED);
+
+            List<Submission> allSubs = submissionRepository.findByTaskId(submission.getTaskId());
+            boolean hasAccepted = allSubs.stream()
+                    .anyMatch(s -> !s.getId().equals(submission.getId()) && s.getStatus() == SubmissionStatus.ACCEPTED);
+
+            if (!hasAccepted) {
+                taskService.updateTaskStatus(task.getId(), TaskStatus.ASSIGNED.name(), jwt);
+            }
         }
 
         return submissionRepository.save(submission);
